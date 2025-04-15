@@ -1,0 +1,875 @@
+openapi: 3.0.0
+info:
+  title: User and Mentor Management API
+  version: 1.0.0
+  description: API for managing users, mentors, offers, and authentication
+servers:
+  - url: 'https://prod-team-35-lg7sic6v.REDACTED/api'
+paths:
+  /mentors:
+    get:
+      tags: [Mentors]
+      summary: Retrieve a list of mentors
+      parameters:
+        - name: sort_by
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [name, age]
+        - name: direction
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: age_from
+          in: query
+          required: false
+          schema:
+            type: integer
+        - name: age_to
+          in: query
+          required: false
+          schema:
+            type: integer
+        - name: order
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [asc, desc]
+      responses:
+        '200':
+          description: A list of mentors
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Mentor'
+
+  /user/offers/{id}:
+    get:
+      tags: [Offers]
+      summary: Get offer by ID
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Offer details retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  mentor_id:
+                    type: string
+                    format: uuid
+                  user_id:
+                    type: string
+                    format: uuid
+                  message:
+                    type: string
+                  status:
+                    type: boolean
+                  date:
+                    type: string
+                    format: date-time
+        '404':
+          description: Offer not found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+
+  /user/offers:
+    get:
+      tags: [Offers]
+      summary: Retrieve a list of offers for the authenticated user
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: A list of offers
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Offer'
+
+  /profile:
+    get:
+      tags: [Users]
+      summary: Get user profile
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: User profile retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  user_id:
+                    type: string
+                    format: uuid
+                  first_name:
+                    type: string
+                  last_name:
+                    type: string
+                  age:
+                    type: integer
+                  about:
+                    type: string
+                  contact:
+                    type: string
+                  avatar:
+                    type: string
+        '404':
+          description: User not found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+
+  /user/avatar/{user_id}:
+    get:
+      summary: Получить аватар пользователя
+      description: Возвращает аватар пользователя в формате PNG по его идентификатору.
+      parameters:
+        - name: user_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Идентификатор пользователя (UUID)
+      responses:
+        '200':
+          description: Аватар пользователя
+          content:
+            image/png:
+              schema:
+                type: string
+                format: binary
+        '404':
+          description: Пользователь не найден
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "User not found"
+  /user/avatar:
+    put:
+      summary: Обновить аватар пользователя
+      description: Обновляет аватар текущего пользователя (определяется по JWT токену).
+      requestBody:
+        required: true
+        content:
+          image/png:
+            schema:
+              type: string
+              format: binary
+      security:
+        - BearerAuth: [ ]
+      responses:
+        '200':
+          description: Аватар успешно обновлен
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "OK"
+        '401':
+          description: Неверный или отсутствующий токен
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  detail:
+                    type: string
+                    example: "Invalid or missing token"
+        '404':
+          description: Пользователь не найден
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  detail:
+                    type: string
+                    example: "User not found"
+
+  /user/auth/sign-in:
+    post:
+      tags: [Users]
+      summary: Authenticate a user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserAuth'
+      responses:
+        '200':
+          description: User successfully authenticated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  token:
+                    type: string
+        '404':
+          description: User not found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+        '403':
+          description: Invalid password
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+
+  /user/auth/sign-up:
+    post:
+      tags: [Users]
+      summary: Register a new user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/User'
+      responses:
+        '201':
+          description: User successfully registered
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+        '409':
+          description: Login already exists
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+
+  /user/profile:
+    patch:
+      tags: [Users]
+      summary: Update user profile
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/User'
+      responses:
+        '200':
+          description: User profile updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  user_id:
+                    type: string
+                    format: uuid
+                  login:
+                    type: string
+        '404':
+          description: User not found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+
+  /user/verify:
+    post:
+      tags: [Users]
+      summary: Verify user account
+      parameters:
+        - name: q
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: User account verified successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  token:
+                    type: string
+        '404':
+          description: Verification request not found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+
+  /admin/secreturl/mentors/{mentor_id}:
+    get:
+      tags: [Admin]
+      summary: Get mentor by ID
+      parameters:
+        - name: mentor_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Mentor details retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  mentor_id:
+                    type: string
+                    format: uuid
+                  first_name:
+                    type: string
+                  last_name:
+                    type: string
+                  age:
+                    type: integer
+                  direction:
+                    type: string
+                  about:
+                    type: string
+                  contact:
+                    type: string
+        '404':
+          description: Mentor not found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+
+  /admin/secreturl/mentor-requests/{request_id}:
+    post:
+      tags: [Admin]
+      summary: Approve or reject a mentor request
+      parameters:
+        - name: request_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Approve'
+      responses:
+        '200':
+          description: Request processed successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+        '404':
+          description: Request not found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+
+  /admin/secret-url:
+    post:
+      tags: [Admin]
+      summary: Authenticate an admin
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Admin'
+      responses:
+        '200':
+          description: Admin successfully authenticated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  token:
+                    type: string
+        '404':
+          description: Admin not found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+        '403':
+          description: Invalid password
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+
+  /admin/secreturl/mentors:
+    get:
+      tags: [Admin]
+      summary: Retrieve a list of mentors
+      parameters:
+        - name: sort_by
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [name, age]
+        - name: direction
+          in: query
+          required: false
+          schema:
+            type: array
+            items:
+              type: string
+          style: form
+          explode: true
+          description: Filter mentors by their direction(s). Accepts multiple values.
+        - name: age_from
+          in: query
+          required: false
+          schema:
+            type: integer
+        - name: age_to
+          in: query
+          required: false
+          schema:
+            type: integer
+        - name: order
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [asc, desc]
+      responses:
+        '200':
+          description: A list of mentors
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Mentor'
+
+  /admin/secreturl/mentor-requests:
+    get:
+      tags: [Admin]
+      summary: Retrieve mentor requests
+      parameters:
+        - name: sort_by
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [date, request_id]
+        - name: order
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [asc, desc]
+        - name: date_from
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date-time
+        - name: date_to
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date-time
+        - name: group_by_status
+          in: query
+          required: false
+          schema:
+            type: boolean
+      responses:
+        '200':
+          description: A list of mentor requests
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/MentorRequest'
+
+  /admin/secreturl/users/{user_id}:
+    get:
+      tags: [Admin]
+      summary: Get user by ID
+      parameters:
+        - name: user_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: User details retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  user_id:
+                    type: string
+                    format: uuid
+                  first_name:
+                    type: string
+                  last_name:
+                    type: string
+                  age:
+                    type: integer
+                  about:
+                    type: string
+                  contact:
+                    type: string
+        '404':
+          description: User not found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+
+  /admin/secreturl/users:
+    get:
+      tags: [Admin]
+      summary: Retrieve a list of users
+      parameters:
+        - name: sort_by
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [name, age]
+        - name: age_from
+          in: query
+          required: false
+          schema:
+            type: integer
+        - name: age_to
+          in: query
+          required: false
+          schema:
+            type: integer
+        - name: order
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [asc, desc]
+      responses:
+        '200':
+          description: A list of users
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/User'
+
+  /mentors/offer:
+    post:
+      tags: [Offers]
+      summary: Submit an offer to a mentor
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Offer'
+      responses:
+        '200':
+          description: Offer successfully submitted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+
+  /mentors/{mentor_id}/offers/{user_id}:
+    post:
+      tags: [Offers]
+      summary: Respond to an offer
+      parameters:
+        - name: mentor_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: user_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Answer'
+      responses:
+        '200':
+          description: Offer response processed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+        '404':
+          description: User or Mentor not found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+
+  /mentors/{mentor_id}:
+    get:
+      tags: [Mentors]
+      summary: Get mentor by ID
+      parameters:
+        - name: mentor_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Mentor details retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  mentor_id:
+                    type: string
+                    format: uuid
+                  first_name:
+                    type: string
+                  last_name:
+                    type: string
+                  age:
+                    type: integer
+                  direction:
+                    type: string
+                  about:
+                    type: string
+                  contact:
+                    type: string
+        '404':
+          description: Mentor not found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+
+components:
+  schemas:
+    User:
+      type: object
+      properties:
+        user_id:
+          type: string
+          format: uuid
+        login:
+          type: string
+        password:
+          type: string
+        first_name:
+          type: string
+        last_name:
+          type: string
+        age:
+          type: integer
+        about:
+          type: string
+        contact:
+          type: string
+      required:
+        - login
+        - password
+    Mentor:
+      type: object
+      properties:
+        mentor_id:
+          type: string
+          format: uuid
+        first_name:
+          type: string
+        last_name:
+          type: string
+        age:
+          type: integer
+        direction:
+          type: string
+        about:
+          type: string
+        contact:
+          type: string
+    MentorRequest:
+      type: object
+      properties:
+        request_id:
+          type: string
+          format: uuid
+        about:
+          type: string
+        direction:
+          type: string
+        date:
+          type: string
+          format: date-time
+        status:
+          type: boolean
+    Offer:
+      type: object
+      properties:
+        mentor_id:
+          type: string
+          format: uuid
+        user_id:
+          type: string
+          format: uuid
+        message:
+          type: string
+        status:
+          type: boolean
+        date:
+          type: string
+          format: date-time
+    UserAuth:
+      type: object
+      properties:
+        login:
+          type: string
+        password:
+          type: string
+      required:
+        - login
+        - password
+    Admin:
+      type: object
+      properties:
+        login:
+          type: string
+        password:
+          type: string
+      required:
+        - login
+        - password
+    Approve:
+      type: object
+      properties:
+        status:
+          type: boolean
+      required:
+        - status
+    Answer:
+      type: object
+      properties:
+        status:
+          type: boolean
+        offer_id:
+          type: string
+          format: uuid
+      required:
+        - status
+        - offer_id
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT

@@ -1,0 +1,67 @@
+services:
+  api:
+    image: ${IMAGE_NAME}
+    environment:
+      POSTGRES_CONN: ${POSTGRES_CONN}
+      RANDOM_SECRET: ${RANDOM_SECRET}
+      SMTP_PASSWORD: ${SMTP_PASSWORD}
+      REDIS_CONN: "redis:6380"
+
+    healthcheck:
+      test: curl -f https://prod-team-35-lg7sic6v.REDACTED/ping
+      interval: 30s
+      timeout: 20s
+      start_period: 5s
+      retries: 3
+
+    volumes:
+      - /home/ubuntu/ssl/fullchain.pem:/api/ssl/chain.pem
+      - /home/ubuntu/ssl/privkey.pem:/api/ssl/privkey.pem
+
+    ports:
+      - "25"
+      - "443"
+  web:
+    image: ${IMAGE_NAME_WEB}
+    volumes:
+      - /home/ubuntu/ssl/fullchain.pem:/nginx/ssl/chain.pem
+      - /home/ubuntu/ssl/privkey.pem:/nginx/ssl/privkey.pem
+      - /home/ubuntu/ssl/cert.pem:/nginx/ssl/cert.pem
+
+    ports:
+      - "443:443"
+     # - "5173:80"
+
+  postgres:
+    image: postgres:15
+    environment:
+      POSTGRES_USER: ${POSTGRES_USERNAME}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DATABASE}
+    ports:
+      - "5432"
+
+  redis:
+    image: redis:latest
+    ports:
+      - "6380"
+    restart: always
+    volumes:
+      - redis_data:/data
+    command: ["redis-server", "--port", "6380"]
+
+  postfix:
+    image: boky/postfix:latest
+    environment:
+      - maildomain=prod-team-35-lg7sic6v.REDACTED:443
+      - smtp_user=MFS:${SMTP_PASSWORD}
+      - relayhost=[connect.smtp.bz]:2525
+      - MYNETWORKS=0.0.0.0/0
+      - ALLOWED_SENDER_DOMAINS=prod-team-35-lg7sic6v.REDACTED
+    ports:
+      - "25:25"
+      - "587:587"
+      - "2525:2525"
+
+volumes:
+  redis_data:
